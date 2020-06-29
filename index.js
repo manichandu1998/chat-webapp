@@ -1,10 +1,17 @@
+require('dotenv').config()
 const express = require("express")
 const bcrypt = require("bcrypt")
 const bodyParser = require("body-parser")
+const jwt = require('jsonwebtoken')
 const app = express()
+
 app.use(bodyParser.json())
+app.use(express.json())
+
 app.listen(3000)
+console.log("Listening on Port 3000")
 var users = []
+var accessTokens = []
 app.post('/register',async (req,res)=>{
     try{
         const hashedpassword = await bcrypt.hash(req.body.password,10)
@@ -23,7 +30,9 @@ app.post('/login',async (req,res)=>{
             return res.status(400).send("User not found")
         }
         if(await bcrypt.compare(req.body.password,user.password)){
-            res.send("Success")
+            const accessToken = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET)
+            accessTokens.push(accessToken)
+            res.json({accessToken:accessToken})
         } else {
             res.send("Wrong Password")
         }
@@ -32,6 +41,17 @@ app.post('/login',async (req,res)=>{
     }
 })
 
-app.get('/users',(req,res)=>{
-    res.json(users)
+app.post('/logout',async (req,res) =>{
+    try {
+        accessTokens = accessTokens.filter(accessToken =>{
+            accessToken!=req.headers.accessToken
+        })
+        res.send(201)
+    } catch (error) {
+        res.status(500)
+    }
+})
+
+app.get('/getData',(req,res)=>{
+    res.json(accessTokens)
 })
